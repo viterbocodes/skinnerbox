@@ -1,0 +1,16 @@
+import tkinter as tk
+import gui
+
+
+
+if __name__ == '__main__':
+    #board = Arduino('/dev/ttyACM1')
+    print("Communication Successfully Initiated")
+    root = tk.Tk()
+    gui.Skinner(root).pack(fill="both", expand=True)
+    root.mainloop()
+    
+
+
+
+
