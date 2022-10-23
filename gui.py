@@ -7,28 +7,9 @@ import gui
 import numpy as np
 import csv
 
-vid_capture = cv2.VideoCapture(0)
-vid_cod = cv2.VideoWriter_fourcc(*'XVID')
-output = cv2.VideoWriter("videos/cam_video.mp4", vid_cod, 20.0, (640,480))
 
-class MyDialog(object):
-    def __init__(self, parent):
-        self.toplevel = tk.Toplevel(parent)
-        self.var = tk.StringVar()
-        self.exp_name = tk.StringVar()
-        label = tk.Label(self.toplevel, text="Pick something:")
-        om = tk.OptionMenu(self.toplevel, self.var, "one", "two","three")
-        button = tk.Button(self.toplevel, text="OK", command=self.toplevel.destroy)
-        label.pack(side="top", fill="x")
-        om.pack(side="top", fill="x")
-        button.pack()
 
-    def show(self):
-        self.toplevel.deiconify()
-        self.toplevel.wait_window()
-        value = self.var.get()
-        return value
-    
+
 
 class Skinner(tk.Frame):
     def __init__(self, parent):
@@ -38,15 +19,23 @@ class Skinner(tk.Frame):
         self.exp=None;
         self.get_location = 0;
         self.action_active=0;
+        self.vid_capture = cv2.VideoCapture(0)
+        self.vid_cod = cv2.VideoWriter_fourcc(*'XVID')
+        self.output = cv2.VideoWriter("videos/cam_video.mp4", self.vid_cod, 20.0, (640,480))
         self.board=None;
         self.actions = {200: [2,3,0], 400: [5,3,0]}
         self.button_start = tk.Button(self, text="Start", command=self.on_start)
         self.button_end = tk.Button(self, text="End", command=self.on_end)
-        self.exp_name = tk.Text(self.toplevel, self.exp_name)
+        self.exp_name = tk.Entry(self)
+        label2 = tk.Label(self, text='Type your Number:')
+        label2.config(font=('helvetica', 10))
+        #canvas1.create_window(200, 100, window=label2)
+        entry1 = tk.Entry(self) 
         self.label = tk.Label(self, width=80)
         self.label.pack(side="top", fill="x")
         self.button_start.pack(pady=20)
         self.button_end.pack(pady=20)
+        self.exp_name.pack(pady=20)
     def __draw_label(self,img, text, pos, bg_color):
         font_face = cv2.FONT_HERSHEY_SIMPLEX
         scale = 0.4
@@ -60,12 +49,12 @@ class Skinner(tk.Frame):
 
         cv2.rectangle(img, pos, (end_x, end_y), bg_color, thickness)
         cv2.putText(img, text, pos, font_face, scale, color, 1, cv2.LINE_AA)
-        
+        return img
     def on_end(self):
         # close the already opened camera
-        vid_capture.release()
+        self.vid_capture.release()
         # close the already opened file
-        output.release()
+        self.output.release()
         # close the window and de-allocate any associated memory usage
         cv2.destroyAllWindows()
         self.board.analog[0].disable_reporting()
@@ -85,20 +74,20 @@ class Skinner(tk.Frame):
                                                 time_at_current_frame, frame_number_at_current_frame)])
 
     def check_ard(self):
-        it = util.Iterator(self.board)
-        it.start()
-        self.board.analog[0].enable_reporting()
-        print ("Read Start")
-        print(self.board.analog[0].read())
+        #it = util.Iterator(self.board)
+        #it.start()
+        #self.board.analog[0].enable_reporting()
+        #print ("Read Start")
+        #print(self.board.analog[0].read())
+        #time.sleep(1)
+        #print(self.board.analog[1].read())
         time.sleep(1)
-        print(self.board.analog[1].read())
-        time.sleep(1)
-        print(self.board.analog[2].read())
+        #print(self.board.analog[2].read())
         #result = MyDialog(self).show()
         #self.label.configure(text="your result: %s" % result)
         #board = Arduino('/dev/ttyACM1')
     def ard_action(self):
-        self.board.digital[13].write(1)
+        #self.board.digital[13].write(1)
         time.sleep(1)
         
     def get_rat_loc(self,frame,min_x,min_y):
@@ -120,10 +109,10 @@ class Skinner(tk.Frame):
         detector = cv2.SimpleBlobDetector_create(params)
         keyPoints = detector.detect(frame) #list of blobs keypoints
         
-    def do_action(self,action,time):
-        self.board.digital[action].write(1)
-        time.sleep(time)
-        self.board.digital[action].write(0)
+    def do_action(self,action,sleepTime):
+        #self.board.digital[action].write(1)
+        time.sleep(sleepTime)
+        #self.board.digital[action].write(0)
         
     def on_start(self):
         #board = Arduino('/dev/ttyACM1')
@@ -135,37 +124,41 @@ class Skinner(tk.Frame):
                     time.sleep(0.5) '''   
         starttime = time.time()
         exp_name = self.exp_name.get()
-        import csv
-        with open( 'data/' + exp_name + '.csv', 'w', newline='') as file:
+        with open( 'data/' + exp_name + '.csv', 'w+', newline='') as file:
+            now = round((time.time() - self.timer), 2)
             self.writer = csv.writer(file)
-        self.writer.writerow([now,"start","start" , exp_name])
+            self.writer.writerow([now,"start","start" , exp_name])
         while(True):
             # Check for event
             data=self.check_ard()
             now = round((time.time() - self.timer), 2)
             if data:
-                self.writer.writerow([now,"action", data, exp_name])
+                with open( 'data/' + exp_name + '.csv', 'w+', newline='') as file:
+                    self.writer = csv.writer(file)
+                    self.writer.writerow([now,"action", data, exp_name])
                 self.action_active=30
             # Capture each frame of webcam video
-            ret,frame = vid_capture.read()
+            ret,frame = self.vid_capture.read()
             lab=now;
             ## do action if called for for n seconds
-            for k,v in self.actions: 
-                if (k>now and v[1]!=0): 
-                    self.actions[k] = self.do_action(k,v[0])
+            for key,value in self.actions.items(): 
+                if (int(key)>int(now) and value[1]!=0): 
+                    self.actions[key] = self.do_action(value[0],value[1])
             if (self.action_active>0):
-                lab=now + "::" + data
+                lab=str(now + "::" + data)
                 self.action_active=self.action_active-1
-            self.__draw_label(frame, lab, (20,20), (255,0,0))
-            if self.get_location and now % 4 == 0:
+            img=self.__draw_label(frame, "lab", (20,20), (255,0,0))
+            if self.get_location and int(now) % 4 == 0:
                 keypoints = self.get_rat_loc(frame)
-                im_with_keypoints = cv2.drawKeypoints(frame, keypoints, np.array([]), (0,0,255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+                im_with_keypoints = cv2.drawKeypoints(img, keypoints, np.array([]), (0,0,255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
                 for i in keypoints:
                     x = keypoints[i].pt[0] #i is the index of the blob you want to get the position
                     y = keypoints[i].pt[1]
-                    self.writer.writerow([now,"location", keypoints, exp_name])
-            cv2.imshow(self.exp, frame) 
-            output.write(frame)
+                    with open( 'data/' + exp_name + '.csv', 'w+', newline='') as file:
+                        self.writer = csv.writer(file)
+                        self.writer.writerow([now,"location", keypoints, exp_name])
+            cv2.imshow(self.exp, img) 
+            self.output.write(img)
             # Close and break the loop after pressing "x" key
             if cv2.waitKey(1) &0XFF == ord('x'):
                 break
