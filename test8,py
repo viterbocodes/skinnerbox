@@ -5,9 +5,34 @@ import cv2
 import numpy as np;
 
 # Read image
-im = cv2.imread("images/rat9.jpg", cv2.IMREAD_GRAYSCALE)
-
+im = cv2.imread("images/rat8.jpg", cv2.IMREAD_COLOR)
+hsv = cv2.cvtColor(im, cv2.COLOR_BGR2HSV)
+mask = cv2.inRange(hsv, (5, 75, 25), (25, 255, 255))
 #im = cv2.subtract(255, im)
+imask = mask>0
+orange = np.zeros_like(im, np.uint8)
+orange[imask] = im[imask]
+
+#color filter
+
+# Define lower and uppper limits of what we call "brown"
+brown_lo=np.array([10,0,0])
+brown_hi=np.array([20,255,255])
+
+# Mask image to only select browns
+mask=cv2.inRange(hsv,brown_lo,brown_hi)
+
+# Change image to .. where we found brown
+#im[mask>0]=(0,0,0)
+
+
+y=80
+x=0
+h=255
+w=255
+im = im[y:y+h, x:x+w]
+
+
 
 
 # Setup SimpleBlobDetector parameters.
@@ -21,7 +46,7 @@ params.blobColor = 255
  
 # Set Circularity filtering parameters
 params.filterByCircularity = False
-params.minCircularity = 0.1
+params.minCircularity = 0.2
  
 # Set Convexity filtering parameters
 params.filterByConvexity = True
@@ -29,7 +54,7 @@ params.minConvexity = 0.4
      
 # Set inertia filtering parameters
 params.filterByInertia = True
-params.minInertiaRatio = 0.6
+params.minInertiaRatio = 0.25
 
 
  
