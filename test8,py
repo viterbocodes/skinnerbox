@@ -5,7 +5,7 @@ import cv2
 import numpy as np;
 
 # Read image
-im = cv2.imread("images/rat8.jpg", cv2.IMREAD_COLOR)
+im = cv2.imread("images/rat4.jpg", cv2.IMREAD_COLOR)
 hsv = cv2.cvtColor(im, cv2.COLOR_BGR2HSV)
 mask = cv2.inRange(hsv, (5, 75, 25), (25, 255, 255))
 #im = cv2.subtract(255, im)
