@@ -31,6 +31,8 @@ class Skinner(tk.Frame):
         self.writer=None;
         self.data= {0:[0,'start','start']}
         self.exp=None;
+        self.active_key=0;
+        self.keypoints= None;
         self.get_location = 1;
         self.action_active=0;
         self.vid_capture = cv2.VideoCapture(0)
@@ -185,15 +187,24 @@ class Skinner(tk.Frame):
                 self.action_active=self.action_active-1
             img=self.__draw_label(frame, lab, (30,30), (130,0,0))
             if self.get_location and i % 10 == 0:
+                self.active_key=10;
                 keypoints = self.get_rat_loc(frame)
-                if keypoints != None:
+                self.keypoints = keypoints
+                if keypoints != None and len(keypoints)>0:
+                    self.keypoints = keypoints
+                    print("keyed")
+                    print(f"X: {keypoints[0].pt[0]} and Y: {keypoints[0].pt[1]}.")
                     img = cv2.drawKeypoints(img, keypoints, np.array([]), (0,0,255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-                for i in keypoints:
-                    x = keypoints[i].pt[0] #i is the index of the blob you want to get the position
-                    y = keypoints[i].pt[1]
-                    self.data[now] = [now,'location',tuple(x,y)]
-            if keypoints is not None:
-                im_with_keypoints = cv2.drawKeypoints(frame, keypoints, np.array([]), (0, 0, 255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+                ii=0
+                for j in keypoints:
+                    x = keypoints[ii].pt[0] #i is the index of the blob you want to get the position
+                    y = keypoints[ii].pt[1]
+                    self.data[now] = [now,'location',x,y]
+                    ii=ii+1;
+            if self.keypoints is not None and len(keypoints)>0 and self.active_key>0:
+                im_with_keypoints = cv2.drawKeypoints(img, keypoints, np.array([]), (0, 0, 255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+                print(f"X: {keypoints[0].pt[0]} and Y: {keypoints[0].pt[1]}.")
+                self.active_key = self.active_key - 1
             cv2.imshow(self.exp, img) 
             self.output.write(img)
             # Close and break the loop after pressing "x" key
