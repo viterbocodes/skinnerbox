@@ -14,13 +14,14 @@ import json
 
 class Arduino:
     def __init__(self, port):
-        self.dev = serial.Serial(port, baudrate=19200)
+        #self.dev = serial.Serial(port, baudrate=19200)
         time.sleep(1)
 
     def query(self, message):
-        self.dev.write(message.encode('ascii'))
-        line = self.dev.readline().decode('ascii').strip()
-        return line
+        time.sleep(1)
+        #self.dev.write(message.encode('ascii'))
+        #line = self.dev.readline().decode('ascii').strip()
+        #return line
     
 
 class Skinner(tk.Frame):
@@ -65,31 +66,90 @@ class Skinner(tk.Frame):
         cv2.destroyAllWindows()
         self.board.analog[0].disable_reporting()
     def check_ard(self,myValues = [], *args):
-        Dict = json.loadsself.ard.query("sens\n")
-        return Dict
+        if myValues is not None and len(myValues)!=0:
+            Dict = json.load(self.ard.query("sens\n"));
+            return Dict
+        else:
+            return None
     def ard_action(self):
         #self.board.digital[13].write(1)
         time.sleep(1)
         
     def get_rat_loc(self,frame):
-        frame = cv2.GaussianBlur(frame, (11, 11), 0)
-        frame = cv2.erode(frame, None, iterations=2)
-        frame = cv2.dilate(frame, None, iterations=2)
-        #mask =  cv2.inRange(frame, self.miceLower, self.miceUpper)
+        # Read image
+        #im = cv2.imread("images/rat4.jpg", cv2.IMREAD_COLOR)
+        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        mask = cv2.inRange(hsv, (5, 75, 25), (25, 255, 255))
+        #im = cv2.subtract(255, im)
+        imask = mask>0
+        orange = np.zeros_like(frame, np.uint8)
+        orange[imask] = frame[imask]
+
+        #color filter
+
+        # Define lower and uppper limits of what we call "brown"
+        brown_lo=np.array([10,0,0])
+        brown_hi=np.array([20,255,255])
+
+        # Mask image to only select browns
+        mask=cv2.inRange(hsv,brown_lo,brown_hi)
+
+        # Change image to .. where we found brown
+        #im[mask>0]=(0,0,0)
+
+
+        y=80
+        x=0
+        h=255
+        w=255
+        frame = frame[y:y+h, x:x+w]
+
+
+
+
+        # Setup SimpleBlobDetector parameters.
         params = cv2.SimpleBlobDetector_Params()
-        #THRESHOLDS
-        params.filterByConvexity = True
-        params.minConvexity = 0.7
-        params.minThreshold = 200
-        params.maxThreshold = 255
+        # Set Area filtering parameters
         params.filterByArea = True
         params.minArea = 300
+
+        params.filterByColor = False
+        params.blobColor = 255
         
-        #X AND Y COORDINATES STORED IN ARRAY
-        #key_points = detector.detect(frame)
-        detector = cv2.SimpleBlobDetector_create(params)
-        keyPoints = detector.detect(frame) #list of blobs keypoints
-        return keyPoints
+        # Set Circularity filtering parameters
+        params.filterByCircularity = False
+        params.minCircularity = 0.2
+        
+        # Set Convexity filtering parameters
+        params.filterByConvexity = True
+        params.minConvexity = 0.4
+            
+        # Set inertia filtering parameters
+        params.filterByInertia = True
+        params.minInertiaRatio = 0.25
+
+
+        
+
+        # Create a detector with the parameters
+        ver = (cv2.__version__).split('.')
+        if int(ver[0]) < 3:
+            detector = cv2.SimpleBlobDetector(params)
+        else:
+            detector = cv2.SimpleBlobDetector_create(params)
+
+        # Detect blobs.
+        keypoints = detector.detect(frame)
+
+        # Draw detected blobs as red circles.
+        # cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS ensures
+        # the size of the circle corresponds to the size of blob
+
+        im_with_keypoints = cv2.drawKeypoints(frame, keypoints, np.array([]), (0, 0, 255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+
+        # Show blobs
+        #cv2.imshow("Keypoints", im_with_keypoints)
+        return keypoints
         
     def do_action(self,action,sleepTime):
         #self.board.digital[action].write(1)
@@ -116,14 +176,15 @@ class Skinner(tk.Frame):
             ret,frame = self.vid_capture.read()
             lab=now;
             ## do action if called for for n seconds
-            for key,value in self.actions.items(): 
-                if (int(key)>int(now) and value!=None and value[1]!=0): 
-                    self.actions[key] = self.do_action(value[0],value[1])
+            if i % 4 == 0:
+                for key,value in self.actions.items(): 
+                    if (int(key)>int(now) and value!=None and value[1]!=0): 
+                        self.actions[key] = self.do_action(value[0],value[1])
             if (self.action_active>0):
                 lab=str(now) + "::" + str(data)
                 self.action_active=self.action_active-1
             img=self.__draw_label(frame, lab, (30,30), (130,0,0))
-            if self.get_location and i % 8 == 0:
+            if self.get_location and i % 10 == 0:
                 keypoints = self.get_rat_loc(frame)
                 if keypoints != None:
                     img = cv2.drawKeypoints(img, keypoints, np.array([]), (0,0,255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
@@ -131,6 +192,8 @@ class Skinner(tk.Frame):
                     x = keypoints[i].pt[0] #i is the index of the blob you want to get the position
                     y = keypoints[i].pt[1]
                     self.data[now] = [now,'location',tuple(x,y)]
+            if keypoints is not None:
+                im_with_keypoints = cv2.drawKeypoints(frame, keypoints, np.array([]), (0, 0, 255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
             cv2.imshow(self.exp, img) 
             self.output.write(img)
             # Close and break the loop after pressing "x" key
