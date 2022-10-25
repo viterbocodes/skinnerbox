@@ -11,6 +11,13 @@ import serial
 import json
 
 
+def exp_logic(self):  
+    #### conditional long to send to decide what to send  and when #######
+    ### action,action pin, duration is to be set
+    ### actions= d = digital write, q=get data from
+    send_val="d,13,5"
+    #### conditional long to send to decide what to send and when #######  
+    return send_val
 
 class Arduino:
     def __init__(self, port):
@@ -67,12 +74,10 @@ class Skinner(tk.Frame):
         # close the window and de-allocate any associated memory usage
         cv2.destroyAllWindows()
         self.board.analog[0].disable_reporting()
-    def check_ard(self,myValues = [], *args):
-        if myValues is not None and len(myValues)!=0:
-            Dict = json.load(self.ard.query("sens\n"));
-            return Dict
-        else:
-            return None
+    def check_ard(self):
+        send_val=exp_logic();
+        Dict = json.load(self.ard.query(send_val));
+        return Dict
     def ard_action(self):
         #self.board.digital[13].write(1)
         time.sleep(1)
@@ -151,7 +156,7 @@ class Skinner(tk.Frame):
 
         # Show blobs
         #cv2.imshow("Keypoints", im_with_keypoints)
-        return keypoints
+        return keypoints, im_with_keypoints
         
     def do_action(self,action,sleepTime):
         #self.board.digital[action].write(1)
