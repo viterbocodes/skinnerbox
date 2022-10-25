@@ -26,9 +26,9 @@ class Arduino:
 
     def query(self, message):
         time.sleep(1)
-        #self.dev.write(message.encode('ascii'))
-        #line = self.dev.readline().decode('ascii').strip()
-        #return line
+        self.dev.write(message.encode('ascii'))
+        line = self.dev.readline().decode('ascii').strip()
+        return line
     
 
 class Skinner(tk.Frame):
