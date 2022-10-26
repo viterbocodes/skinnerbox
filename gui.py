@@ -11,25 +11,32 @@ import serial
 import json
 
 
-def exp_logic(self):  
-    #### conditional long to send to decide what to send  and when #######
-    ### action,action pin, duration is to be set
-    ### actions= d = digital write, q=get data from
-    send_val="d,13,5"
-    #### conditional long to send to decide what to send and when #######  
-    return send_val
+
 
 class Arduino:
     def __init__(self, port):
-        #self.dev = serial.Serial(port, baudrate=19200)
+        self.dev = serial.Serial(port, baudrate=9600)
         time.sleep(1)
 
-    def query(self, message):
+    def query_old(self, message):
         time.sleep(1)
         self.dev.write(message.encode('ascii'))
         line = self.dev.readline().decode('ascii').strip()
         return line
     
+    def send(self, message):
+        time.sleep(1)
+        self.dev.write(message.encode('ascii'))
+        
+    def query(self):
+        #time.sleep(1)
+        message="q,0,0"
+        self.dev.write(message.encode('ascii'))
+        line = self.dev.readline().decode('ascii').strip()
+        return line
+        
+
+
 
 class Skinner(tk.Frame):
     def __init__(self, parent):
@@ -59,7 +66,18 @@ class Skinner(tk.Frame):
         self.button_start.pack(pady=20)
         self.button_end.pack(pady=20)
         self.exp_name.pack(pady=20)
-        self.ard =  Arduino('COM4')
+        self.ard =  Arduino('/dev/cu.usbmodem11201')
+        
+        
+    def exp_logic(self):  
+        #### conditional long to send to decide what to send  and when #######
+        ### action,action pin, duration is to be set
+        ### actions= d = digital write, q=get data from
+        self.ard.send("d,13,5")
+        #### conditional long to send to decide what to send and when #######  
+        return True;
+
+
     def __draw_label(self,img, text, pos, bg_color):
         cv2.putText(img,str(text),pos, cv2.FONT_HERSHEY_SIMPLEX, 1, bg_color, 2, cv2.LINE_AA)
         return img
@@ -75,9 +93,12 @@ class Skinner(tk.Frame):
         cv2.destroyAllWindows()
         self.board.analog[0].disable_reporting()
     def check_ard(self):
-        send_val=exp_logic();
-        Dict = json.load(self.ard.query(send_val));
-        return Dict
+        data =  self.ard.query()
+        if (len(data)>5):
+            Dict = json.load(data);
+            return Dict
+        else:
+            return None
     def ard_action(self):
         #self.board.digital[13].write(1)
         time.sleep(1)
@@ -152,11 +173,12 @@ class Skinner(tk.Frame):
         # cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS ensures
         # the size of the circle corresponds to the size of blob
 
-        im_with_keypoints = cv2.drawKeypoints(frame, keypoints, np.array([]), (0, 0, 255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+        #im_with_keypoints = cv2.drawKeypoints(frame, keypoints, np.array([]), (0, 0, 255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
 
         # Show blobs
         #cv2.imshow("Keypoints", im_with_keypoints)
-        return keypoints, im_with_keypoints
+        
+        return keypoints
         
     def do_action(self,action,sleepTime):
         #self.board.digital[action].write(1)
@@ -173,23 +195,24 @@ class Skinner(tk.Frame):
         i = 0
         while(True):
             # Check for event
-            data=self.check_ard()
-            now = round((time.time() - self.timer), 2)
-            if data:
-                for key,value in dict:
-                    self.data[now] = [now,'event',value]
+            if (i % 5 == 0):
+                data=self.check_ard()
+                now = round((time.time() - self.timer), 2)
+                result = '{0:02.0f}:{1:02.0f}'.format(*divmod(now * 60, 60))
+                if data:
+                    for key,value in dict:
+                        self.data[now] = [now,'event',value]
             self.action_active=30
             # Capture each frame of webcam video
             ret,frame = self.vid_capture.read()
-            lab=now;
+            lab=result;
             ## do action if called for for n seconds
-            if i % 4 == 0:
+            if (i % 4 == 0):
                 for key,value in self.actions.items(): 
                     if (int(key)>int(now) and value!=None and value[1]!=0): 
                         self.actions[key] = self.do_action(value[0],value[1])
-            if (self.action_active>0):
-                lab=str(now) + "::" + str(data)
-                self.action_active=self.action_active-1
+            # check to see if ard call logic
+            self.exp_logic();
             img=self.__draw_label(frame, lab, (30,30), (130,0,0))
             if self.get_location and i % 10 == 0:
                 self.active_key=10;
@@ -198,12 +221,12 @@ class Skinner(tk.Frame):
                 if keypoints != None and len(keypoints)>0:
                     self.keypoints = keypoints
                     print("keyed")
-                    print(f"X: {keypoints[0].pt[0]} and Y: {keypoints[0].pt[1]}.")
+                    #print(f"X: {keypoints[0].pt[0]} and Y: {keypoints[0].pt[1]}.")
                     img = cv2.drawKeypoints(img, keypoints, np.array([]), (0,0,255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
                 ii=0
                 for j in keypoints:
-                    x = keypoints[ii].pt[0] #i is the index of the blob you want to get the position
-                    y = keypoints[ii].pt[1]
+                    x = keypoints[j].pt[0] #i is the index of the blob you want to get the position
+                    y = keypoints[j].pt[1]
                     self.data[now] = [now,'location',x,y]
                     ii=ii+1;
             if self.keypoints is not None and len(keypoints)>0 and self.active_key>0:
