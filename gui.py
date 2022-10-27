@@ -34,8 +34,6 @@ class Arduino:
         self.dev.write(message.encode('ascii'))
         line = self.dev.readline().decode('ascii').strip()
         return line
-        
-
 
 
 class Skinner(tk.Frame):
@@ -57,6 +55,7 @@ class Skinner(tk.Frame):
         self.button_start = tk.Button(self, text="Start", command=self.on_start)
         self.button_end = tk.Button(self, text="End", command=self.on_end)
         self.exp_name = tk.Entry(self)
+        self.port = tk.Entry(self)
         label2 = tk.Label(self, text='Type your Number:')
         label2.config(font=('helvetica', 10))
         #canvas1.create_window(200, 100, window=label2)
@@ -66,7 +65,8 @@ class Skinner(tk.Frame):
         self.button_start.pack(pady=20)
         self.button_end.pack(pady=20)
         self.exp_name.pack(pady=20)
-        self.ard =  Arduino('/dev/cu.usbmodem11201')
+        self.port.pack(pady=20)
+        self.ard =  Arduino('/dev/cu.usbmodem11401')
         
         
     def exp_logic(self):  
@@ -124,16 +124,11 @@ class Skinner(tk.Frame):
 
         # Change image to .. where we found brown
         #im[mask>0]=(0,0,0)
-
-
         y=80
         x=0
         h=255
         w=255
         frame = frame[y:y+h, x:x+w]
-
-
-
 
         # Setup SimpleBlobDetector parameters.
         params = cv2.SimpleBlobDetector_Params()
@@ -190,7 +185,9 @@ class Skinner(tk.Frame):
             w.writeheader()
             w.writerow(self.data)
     def on_start(self):
-        exp_name = self.exp_name.get()   
+        port = self.port.get() 
+        exp_name = self.exp_name.get() 
+          
         starttime = time.time()
         i = 0
         while(True):
@@ -214,7 +211,7 @@ class Skinner(tk.Frame):
             # check to see if ard call logic
             self.exp_logic();
             img=self.__draw_label(frame, lab, (30,30), (130,0,0))
-            if self.get_location and i % 10 == 0:
+            if 0 and i % 10 == 0:
                 self.active_key=10;
                 keypoints = self.get_rat_loc(frame)
                 self.keypoints = keypoints
