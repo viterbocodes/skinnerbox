@@ -220,7 +220,7 @@ class Skinner(tk.Frame):
                     print("keyed")
                     #print(f"X: {keypoints[0].pt[0]} and Y: {keypoints[0].pt[1]}.")
                     img = cv2.drawKeypoints(img, keypoints, np.array([]), (0,0,255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-                ii=0
+                    ii=0
                 for j in keypoints:
                     x = keypoints[j].pt[0] #i is the index of the blob you want to get the position
                     y = keypoints[j].pt[1]
