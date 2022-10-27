@@ -1,64 +1,43 @@
-import numpy as np
-import os
 import cv2
-
-
-filename = 'video.avi'
-frames_per_second = 24.0
-res = '720p'
-
-# Set resolution for the video capture
-# Function adapted from https://kirr.co/0l6qmh
-def change_res(cap, width, height):
-    cap.set(3, width)
-    cap.set(4, height)
-
-# Standard Video Dimensions Sizes
-STD_DIMENSIONS =  {
-    "480p": (640, 480),
-    "720p": (1280, 720),
-    "1080p": (1920, 1080),
-    "4k": (3840, 2160),
-}
-
-
-# grab resolution dimensions and set video capture to it.
-def get_dims(cap, res='1080p'):
-    width, height = STD_DIMENSIONS["480p"]
-    if res in STD_DIMENSIONS:
-        width,height = STD_DIMENSIONS[res]
-    ## change the current caputre device
-    ## to the resulting resolution
-    change_res(cap, width, height)
-    return width, height
-
-# Video Encoding, might require additional installs
-# Types of Codes: http://www.fourcc.org/codecs.php
-VIDEO_TYPE = {
-    'avi': cv2.VideoWriter_fourcc(*'XVID'),
-    #'mp4': cv2.VideoWriter_fourcc(*'H264'),
-    'mp4': cv2.VideoWriter_fourcc(*'XVID'),
-}
-
-def get_video_type(filename):
-    filename, ext = os.path.splitext(filename)
-    if ext in VIDEO_TYPE:
-      return  VIDEO_TYPE[ext]
-    return VIDEO_TYPE['avi']
-
-
-
+import numpy as np
+ 
+# Create a VideoCapture object
 cap = cv2.VideoCapture(0)
-out = cv2.VideoWriter(filename, get_video_type(filename), 25, get_dims(cap, res))
 
-while True:
-    ret, frame = cap.read()
+# Check if camera opened successfully
+if (cap.isOpened() == False): 
+  print("Unable to read camera feed")
+ 
+# Default resolutions of the frame are obtained.The default resolutions are system dependent.
+# We convert the resolutions from float to integer.
+frame_width = int(cap.get(3))
+frame_height = int(cap.get(4))
+ 
+# Define the codec and create VideoWriter object.The output is stored in 'outpy.avi' file.
+out = cv2.VideoWriter('outpy.avi',cv2.VideoWriter_fourcc('M','J','P','G'), 10, (frame_width,frame_height))
+ 
+while(True):
+  ret, frame = cap.read()
+ 
+  if ret == True: 
+     
+    # Write the frame into the file 'output.avi'
     out.write(frame)
+ 
+    # Display the resulting frame    
     cv2.imshow('frame',frame)
+ 
+    # Press Q on keyboard to stop recording
     if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
-
-
+      break
+ 
+  # Break the loop
+  else:
+    break 
+ 
+# When everything done, release the video capture and video write objects
 cap.release()
 out.release()
+ 
+# Closes all the frames
 cv2.destroyAllWindows()
