@@ -67,13 +67,14 @@ class App:
         self.btn_snapshot=tkinter.Button(window, text="Record", width=50, command=self.record)
         self.btn_snapshot.pack(anchor=tkinter.CENTER, expand=True)
         
+        self.motion = tk.IntVar()
+        self.cap_motion = tk.Checkbutton(window, text='Capture Motion',variable=self.motion, onvalue=1, offvalue=0, command=self.do_motion)
+        self.cap_motion.pack()
+        
         # label
         label = ttk.Label(text="Please select a port:")
         label.pack()
         # create a combobox
-        
-        label = ttk.Label(window,text = "Select a port")  
-        label.pack()  
         port_list = self.serial_ports()
         list1 = tk.StringVar(value=port_list)
         listbox = tk.Listbox(window,listvariable=list1, height=2)  
@@ -90,6 +91,10 @@ class App:
 
         self.window.mainloop()
         
+        
+     def do_motion():
+        print("motion")
+    
      def serial_ports():    
         return  [p.device for p in serial.tools.list_ports.comports()]
 
@@ -248,6 +253,15 @@ class App:
                     result = '{0:02.0f}:{1:02.0f}'.format(*divmod(now * 60, 60))
                     for key,value in dict:
                         self.data[now] = [now,'event',value]
+                        
+            if (int(elapsed_time) % 3 == 0 and self.recording==1 and self.motion.get()==1):
+                #self.active_key=10;
+                a=1
+                keypoints = self.get_rat_loc(frame)
+                self.keypoints = keypoints
+                if keypoints != None and len(keypoints)>0:
+                    self.keypoints = keypoints
+                    frame = cv2.drawKeypoints(frame, keypoints, np.array([]), (0,0,255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
 
             self.photo = PIL.ImageTk.PhotoImage(image = PIL.Image.fromarray(frame))
             self.canvas.create_image(0, 0, image = self.photo, anchor = tkinter.NW) 
