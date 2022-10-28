@@ -139,6 +139,14 @@ class App:
      def serial_ports(self):    
         return [p.device for p in serial.tools.list_ports.comports()]
         #return serial.tools.list_ports.comports()
+        
+     def exp_logic(self):  
+        #### conditional long to send to decide what to send  and when #######
+        ### action,action pin, duration is to be set
+        ### actions= d = digital write, q=get data from
+        self.ard.send("d,13,5")
+        #### conditional long to send to decide what to send and when #######  
+        return True;
 
      def on_select(self,event=None):
         # get selection from event    
@@ -256,7 +264,7 @@ class App:
                         
             if (int(elapsed_time) % 3 == 0 and self.recording==1 and self.motion.get()==1):
                 #self.active_key=10;
-                a=1
+                self.exp_logic();
                 keypoints = self.get_rat_loc(frame)
                 self.keypoints = keypoints
                 if keypoints != None and len(keypoints)>0:
