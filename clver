@@ -2,6 +2,32 @@ import tkinter
 import cv2
 import PIL.Image, PIL.ImageTk
 import time 
+import serial
+import numpy as np
+from datetime import datetime
+
+
+class Arduino:
+    def __init__(self, port):
+        self.dev = serial.Serial(port, baudrate=9600)
+        time.sleep(1)
+
+    def query_old(self, message):
+        time.sleep(1)
+        self.dev.write(message.encode('ascii'))
+        line = self.dev.readline().decode('ascii').strip()
+        return line
+    
+    def send(self, message):
+        time.sleep(1)
+        self.dev.write(message.encode('ascii'))
+        
+    def query(self):
+        #time.sleep(1)
+        message="q,0,0"
+        self.dev.write(message.encode('ascii'))
+        line = self.dev.readline().decode('ascii').strip()
+        return line
 
 
 class App:
@@ -9,38 +35,118 @@ class App:
         self.window = window
         self.window.title(window_title)
         self.video_source = video_source
+        self.recording = 0;
+        self.start_time = time.time()
  
          # open video source (by default this will try to open the computer webcam)
         self.vid = MyVideoCapture(self.video_source)
         
         frame_width = int(self.vid.get_width())
         frame_height = int(self.vid.get_height())
-
+        
         #create output video
         # Define the codec and create VideoWriter object.The output is stored in 'outpy.avi' file.
-        self.out = cv2.VideoWriter('outpy.avi',cv2.VideoWriter_fourcc('M','J','P','G'), 10, (frame_width,frame_height))
+        self.out = cv2.VideoWriter('output.avi',cv2.VideoWriter_fourcc('M','J','P','G'), 10, (frame_width,frame_height))
         
  
-        # Create a canvas that can fit the above video source size
-        self.canvas = tkinter.Canvas(window, width = 480, height = 240)
+        # Create a canvas that can fit the above video souCrce size
+        self.canvas = tkinter.Canvas(window, width = 640, height = 480)
         self.canvas.pack()
  
          # Button that lets the user take a snapshot
         self.btn_snapshot=tkinter.Button(window, text="Snapshot", width=50, command=self.snapshot)
         self.btn_snapshot.pack(anchor=tkinter.CENTER, expand=True)
         
- 
+        # Button that starts Recording
+        self.btn_snapshot=tkinter.Button(window, text="Record", width=50, command=self.record)
+        self.btn_snapshot.pack(anchor=tkinter.CENTER, expand=True)
+        
+        self.ard =  Arduino('/dev/cu.usbmodem11401')
+        
          # After it is called once, the update method will be automatically called every delay milliseconds
         self.delay = 15
         self.update()
- 
+
         self.window.mainloop()
+
+     def record(self):
+          self.start_time = time.time()
+          self.recording=1;
+          
+     def stop(self):
+          self.out.release()
+          self.recording=0;
     
- 
-     def recording(self):
-          ret, frame = self.vid.get_frame()
-         
-    
+     def get_rat_loc(self,frame):
+            # Read image
+        #im = cv2.imread("images/rat4.jpg", cv2.IMREAD_COLOR)
+        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        mask = cv2.inRange(hsv, (5, 75, 25), (25, 255, 255))
+        #im = cv2.subtract(255, im)
+        imask = mask>0
+        orange = np.zeros_like(frame, np.uint8)
+        orange[imask] = frame[imask]
+
+        #color filter
+
+        # Define lower and uppper limits of what we call "brown"
+        brown_lo=np.array([10,0,0])
+        brown_hi=np.array([20,255,255])
+
+        # Mask image to only select browns
+        mask=cv2.inRange(hsv,brown_lo,brown_hi)
+
+        # Change image to .. where we found brown
+        #im[mask>0]=(0,0,0)
+        y=80
+        x=0
+        h=255
+        w=255
+        frame = frame[y:y+h, x:x+w]
+
+        # Setup SimpleBlobDetector parameters.
+        params = cv2.SimpleBlobDetector_Params()
+        # Set Area filtering parameters
+        params.filterByArea = True
+        params.minArea = 300
+
+        params.filterByColor = False
+        params.blobColor = 255
+        
+        # Set Circularity filtering parameters
+        params.filterByCircularity = False
+        params.minCircularity = 0.2
+        
+        # Set Convexity filtering parameters
+        params.filterByConvexity = True
+        params.minConvexity = 0.4
+            
+        # Set inertia filtering parameters
+        params.filterByInertia = True
+        params.minInertiaRatio = 0.25
+
+
+        # Create a detector with the parameters
+        ver = (cv2.__version__).split('.')
+        if int(ver[0]) < 3:
+            detector = cv2.SimpleBlobDetector(params)
+        else:
+            detector = cv2.SimpleBlobDetector_create(params)
+
+        # Detect blobs.
+        keypoints = detector.detect(frame)
+
+        # Draw detected blobs as red circles.
+        # cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS ensures
+        # the size of the circle corresponds to the size of blob
+
+        #im_with_keypoints = cv2.drawKeypoints(frame, keypoints, np.array([]), (0, 0, 255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+
+        # Show blobs
+        #cv2.imshow("Keypoints", im_with_keypoints)
+        
+        return keypoints
+          
      def snapshot(self):
          # Get a frame from the video source
         ret, frame = self.vid.get_frame()
@@ -53,8 +159,24 @@ class App:
          ret, frame = self.vid.get_frame()
  
          if ret:
-             self.photo = PIL.ImageTk.PhotoImage(image = PIL.Image.fromarray(frame))
-             self.canvas.create_image(0, 0, image = self.photo, anchor = tkinter.NW)
+            if 1==1:
+                # Put current DateTime on each frame
+                font = cv2.FONT_HERSHEY_PLAIN
+                elapsed_time = time.time() - self.start_time
+                
+                cv2.putText(frame, str(time.strftime("%H:%M:%S", time.gmtime(elapsed_time))), (20, 40),
+                font, 2, (255, 255, 255), 2, cv2.LINE_AA)
+            if (int(elapsed_time) % 2 == 0):
+                data=self.check_ard()
+                now = round((time.time() - self.timer), 2)
+                result = '{0:02.0f}:{1:02.0f}'.format(*divmod(now * 60, 60))
+                if data:
+                    for key,value in dict:
+                        self.data[now] = [now,'event',value]
+            self.photo = PIL.ImageTk.PhotoImage(image = PIL.Image.fromarray(frame))
+            self.canvas.create_image(0, 0, image = self.photo, anchor = tkinter.NW) 
+            if self.recording:
+                self.out.write(frame) 
  
          self.window.after(self.delay, self.update)
  
@@ -90,6 +212,7 @@ class MyVideoCapture:
     def __del__(self):
          if self.vid.isOpened():
              self.vid.release()
+             
  
 # Create a window and pass it to the Application object
 App(tkinter.Tk(), "Tkinter and OpenCV")
