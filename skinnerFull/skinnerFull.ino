@@ -11,7 +11,7 @@ unsigned long current_time = 0;
 
 
 // Debugging switches and macros
-#define DEBUG 1 // Switch debug output on and off by 1 or 0
+#define DEBUG 0 // Switch debug output on and off by 1 or 0
 
 #if DEBUG
 #define PRINTS(s)   { Serial.print(F(s)); }

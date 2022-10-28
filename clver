@@ -9,7 +9,7 @@ import tkinter.ttk as ttk
 import tkinter as tk
 import serial.tools.list_ports
 from tkinter.messagebox import showinfo
-
+import json
 
 class Arduino:
     def __init__(self, port):
@@ -42,6 +42,7 @@ class App:
         self.recording = 0;
         self.start_time = time.time()
         self.ard = None
+        self.data= {0:[0,'start','start']}
  
          # open video source (by default this will try to open the computer webcam)
         self.vid = MyVideoCapture(self.video_source)
@@ -55,7 +56,7 @@ class App:
         
  
         # Create a canvas that can fit the above video souCrce size
-        self.canvas = tkinter.Canvas(window, width = 640, height = 480)
+        self.canvas = tkinter.Canvas(window, width = 960 , height = 480)
         self.canvas.pack()
  
          # Button that lets the user take a snapshot
@@ -70,41 +71,62 @@ class App:
         label = ttk.Label(text="Please select a port:")
         label.pack()
         # create a combobox
-        self.selected_port = tk.StringVar()
-        self.cb = ttk.Combobox(window, textvariable=self.selected_port)
-        #self.cb['values']=self.serial_ports()
-        self.cb['values'] = ('USA', 'Canada', 'Australia')
-        #self.cb = ttk.Combobox(window, values=self.serial_ports())
-        #self.cb.pack()
-        self.cb.pack()
-        # assign function to combobox
-        self.cb.bind('<<ComboboxSelected>>', self.on_select)
         
+        label = ttk.Label(window,text = "Select a port")  
+        label.pack()  
+        port_list = self.serial_ports()
+        list1 = tk.StringVar(value=port_list)
+        listbox = tk.Listbox(window,listvariable=list1, height=2)  
+        listbox.pack()  
+        listbox.bind("<<ListboxSelect>>", self.port_change)
+        # Create a label widget
+        self.feeback=ttk.Label(window, text="")
+        self.feeback.pack(pady= 30)
+                        
        
          # After it is called once, the update method will be automatically called every delay milliseconds
         self.delay = 15
         self.update()
 
         self.window.mainloop()
+        
+     def serial_ports():    
+        return  [p.device for p in serial.tools.list_ports.comports()]
 
+    
      def record(self):
-          self.start_time = time.time()
-          self.recording=1;
+          if (self.ard!= None):
+            self.start_time = time.time()
+            self.recording=1;
+            self.feeback.configure(text="Running")
+          else:
+            self.feeback.configure(text="Arduino Not Connected")
           
-          
+     def select_lang():
+         return 1
+     
+     def item_selected(self, event=None):
+            """Set active_item to the combobox option selected by the user"""
+            selected_name = self.combo_box.get()
+     
+     
+     def port_change(self,event):
+        selection = event.widget.curselection()
+        if selection and self.recording==0:
+            index = selection[0]
+            data = event.widget.get(index)
+            if self.connect_ard(data):
+                self.feeback.configure(text="Arduino Connected")
+        else:
+            #label.configure(text="")
+            a=1
+    #end mission_selected
     # bind the selected value changes
-     def port_changed(self,event):
+     def option_selected(event):
         """ handle the month changed event """
         showinfo(
             title='Result',
-            message=f'You selected {self.selected_port.get()}!')
-          
-     def on_select(self,event=None):
-        # get selection from event    
-        print("event.widget:", event.widget.get())
-
-        # or get selection directly from combobox
-        print("comboboxes: ", self.cb.get())
+            message=f'You selected {3}')
           
      def stop(self):
           self.out.release()
@@ -122,6 +144,7 @@ class App:
 
      def connect_ard(self,port):
          self.ard =  Arduino(port)
+         return self.ard
     
      def get_rat_loc(self,frame):
             # Read image
@@ -192,7 +215,13 @@ class App:
         #cv2.imshow("Keypoints", im_with_keypoints)
         
         return keypoints
-          
+     def check_ard(self):
+        data =  self.ard.query()
+        if (len(data)>5):
+            Dict = json.load(data);
+            return Dict
+        else:
+            return None  
      def snapshot(self):
          # Get a frame from the video source
         ret, frame = self.vid.get_frame()
@@ -214,9 +243,9 @@ class App:
                 font, 2, (255, 255, 255), 2, cv2.LINE_AA)
             if (int(elapsed_time) % 2 == 0 and self.ard != None):
                 data=self.check_ard()
-                now = round((time.time() - self.timer), 2)
-                result = '{0:02.0f}:{1:02.0f}'.format(*divmod(now * 60, 60))
                 if data:
+                    now = round((time.time() - self.timer), 2)
+                    result = '{0:02.0f}:{1:02.0f}'.format(*divmod(now * 60, 60))
                     for key,value in dict:
                         self.data[now] = [now,'event',value]
             self.photo = PIL.ImageTk.PhotoImage(image = PIL.Image.fromarray(frame))
@@ -234,6 +263,9 @@ class MyVideoCapture:
          if not self.vid.isOpened():
              raise ValueError("Unable to open video source", video_source) 
          # Get video source width and height
+         # Set properties. Each returns === True on success (i.e. correct resolution)
+         self.vid.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+         self.vid.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
          self.width = self.vid.get(cv2.CAP_PROP_FRAME_WIDTH)
          self.height = self.vid.get(cv2.CAP_PROP_FRAME_HEIGHT)
 
