@@ -248,6 +248,7 @@ class App:
                     result = '{0:02.0f}:{1:02.0f}'.format(*divmod(now * 60, 60))
                     for key,value in dict:
                         self.data[now] = [now,'event',value]
+
             self.photo = PIL.ImageTk.PhotoImage(image = PIL.Image.fromarray(frame))
             self.canvas.create_image(0, 0, image = self.photo, anchor = tkinter.NW) 
             if self.recording:
