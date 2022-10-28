@@ -52,7 +52,7 @@ class App:
         
         #create output video
         # Define the codec and create VideoWriter object.The output is stored in 'outpy.avi' file.
-        self.out = cv2.VideoWriter('output.avi',cv2.VideoWriter_fourcc('M','J','P','G'), 10, (frame_width,frame_height))
+        self.out = cv2.VideoWriter('/videos/output.avi',cv2.VideoWriter_fourcc('M','J','P','G'), 10, (frame_width,frame_height))
         
  
         # Create a canvas that can fit the above video souCrce size
@@ -240,7 +240,7 @@ class App:
         ret, frame = self.vid.get_frame()
  
         if ret:
-             cv2.imwrite("frame-" + time.strftime("%d-%m-%Y-%H-%M-%S") + ".jpg", cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
+             cv2.imwrite("images/frame-" + time.strftime("%d-%m-%Y-%H-%M-%S") + ".jpg", cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
 
      def update(self):
          # Get a frame from the video source
